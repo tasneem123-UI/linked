@@ -6,6 +6,7 @@ const User = require('../models/User');
 
 // 📦 3. بنصدّر دالة بتاخد الـ passport كـ parameter عشان نعدّل عليه ونضيف له الإعدادات
 module.exports = (passport) => {
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:5554";
 
     // 🔐 4. بنقول لـ passport: "استخدم استراتيجية جوجل"
     passport.use(new GoogleStrategy({
@@ -17,7 +18,7 @@ module.exports = (passport) => {
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
 
         // 🔗 7. الرابط اللي هترجعنا له جوجل بعد ما المستخدم يسجل دخوله
-        callbackURL: `${process.env.BACKEND_URL}/api/auth/google/callback`
+        callbackURL: `${backendUrl.replace(/\/$/, "")}/api/auth/google/callback`
 
         // 8. هنا بتبدأ الدالة الأساسية اللي بتتنفذ لما جوجل ترجعنا بالبيانات
     }, async (accessToken, refreshToken, profile, done) => {
