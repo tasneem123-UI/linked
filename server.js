@@ -80,12 +80,27 @@ app.get('/test', (req, res) => {
     res.send('✅ Server is running!');
 });
 
-app.get('/ping', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        message: 'Server is alive!',
-        time: new Date().toISOString()
-    });
+// ✅ Route ping (مع اختبار قاعدة البيانات)
+app.get('/ping', async (req, res) => {
+    try {
+        // نحاول نقرا من قاعدة البيانات (حتى لو فاضية)
+        const dbStatus = mongoose.connection.readyState;
+        const dbMessage = dbStatus === 1 ? '✅ MongoDB connected' : '❌ MongoDB not connected';
+        
+        res.json({ 
+            status: 'ok', 
+            message: 'Server is alive!',
+            db: dbMessage,
+            time: new Date().toISOString()
+        });
+    } catch (error) {
+        res.json({ 
+            status: 'ok', 
+            message: 'Server is alive!',
+            db: '❌ MongoDB error: ' + error.message,
+            time: new Date().toISOString()
+        });
+    }
 });
 
 // ✅ تصدير الـ app عشان Vercel
