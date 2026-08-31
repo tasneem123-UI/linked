@@ -17,7 +17,7 @@ router.get('/google/callback',
         const frontendURL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
         
         // التوجيه للفرونت إند بعد النجاح
-        res.redirect(`${frontendURL}/dashboard`); 
+        res.redirect(`${frontendURL}`); 
     }
 );
 
