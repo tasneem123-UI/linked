@@ -12,15 +12,18 @@ router.get('/google', passport.authenticate('google', {
 // 🔄 مسار العودة من جوجل
 router.get('/google/callback',
     passport.authenticate('google', { 
-        failureRedirect: `${process.env.FRONTENDURL}/login` 
+        failureRedirect: `${process.env.FRONTEND_URL}/login` 
     }),
-    authController.googleCallback
+    (req, res) => {
+        req.session.user = req.user;
+        res.redirect(process.env.FRONTEND_URL);
+    }
 );
 
 // 👤 جلب المستخدم الحالي
 router.get('/current-user', authController.getCurrentUser);
 
-// 📋 جلب كل المستخدمين
+// 📋 جلب كل المستخدمين (للبحث)
 router.get('/users', async (req, res) => {
     try {
         const users = await User.find({})
@@ -35,5 +38,5 @@ router.get('/users', async (req, res) => {
 // 🚪 تسجيل الخروج
 router.get('/logout', authController.logout);
 
-// ✅ تأكدي من وجود السطر ده
 module.exports = router;
+// ,ll,,l

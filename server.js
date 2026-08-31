@@ -15,26 +15,9 @@ mongoose.connect(process.env.MONGO_URI)
 
 const app = express();
 
-// ✅ CORS - استخدمي array عشان تدعمي أكتر من origin
-const allowedOrigins = [
-   
-    'http://localhost:3000',
-    'https://linkedin-front.vercel.app'
-].filter(Boolean); // نشيل أي undefined
-
+// ✅ CORS
 app.use(cors({
-    origin: function (origin, callback) {
-        const allowedOrigins = [
-            'http://localhost:3000',
-            'https://linkedin-front.vercel.app'
-        ];
-        // ✅ خليها ترجع true لأي origin في الإنتاج (مؤقتاً)
-        if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'production') {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
@@ -43,17 +26,17 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 
+// ✅ Session (باستخدام الذاكرة المؤقتة - Memory Store)
 app.use(session({
     name: 'linkedin_session',
     secret: process.env.SESSION_SECRET || 'your_secret_key',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production',  // ✅ خليها condition
+        secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',  // ✅ condition
-        maxAge: 24 * 60 * 60 * 1000,
-        domain: process.env.NODE_ENV === 'production' ? '.vercel.app' : undefined  // ✅ condition
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000
     }
 }));
 
@@ -79,30 +62,14 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.get('/test', (req, res) => {
     res.send('✅ Server is running!');
 });
-
-// ✅ Route ping (مع اختبار قاعدة البيانات)
-app.get('/ping', async (req, res) => {
-    try {
-        // نحاول نقرا من قاعدة البيانات (حتى لو فاضية)
-        const dbStatus = mongoose.connection.readyState;
-        const dbMessage = dbStatus === 1 ? '✅ MongoDB connected' : '❌ MongoDB not connected';
-        
-        res.json({ 
-            status: 'ok', 
-            message: 'Server is alive!',
-            db: dbMessage,
-            time: new Date().toISOString()
-        });
-    } catch (error) {
-        res.json({ 
-            status: 'ok', 
-            message: 'Server is alive!',
-            db: '❌ MongoDB error: ' + error.message,
-            time: new Date().toISOString()
-        });
-    }
+// ✅ Route بسيط جداً للاختبار (من غير أي حاجة)
+app.get('/ping', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        message: 'Server is alive!',
+        time: new Date().toISOString()
+    });
 });
-
 // ✅ تصدير الـ app عشان Vercel
 module.exports = app;
 
@@ -112,6 +79,5 @@ if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => {
         console.log(`✅ Server running on http://localhost:${PORT}`);
         console.log(`🔑 Google: http://localhost:${PORT}/api/auth/google`);
-        console.log(`📌 FRONTENDURL = ${process.env.FRONTENDURL || 'http://localhost:3000'}`);
     });
 }
