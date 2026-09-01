@@ -2,9 +2,11 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
 
 module.exports = (passport) => {
+
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        // هنا بيقرا BACKEND_URL من الـ .env بتاعك (http://localhost:5554)
         callbackURL: `${process.env.BACKEND_URL}/api/auth/google/callback`
     }, async (accessToken, refreshToken, profile, done) => {
         try {
@@ -43,14 +45,3 @@ module.exports = (passport) => {
         }
     });
 };
-// Login
-//   ↓
-// Google
-//   ↓
-// تسجيل الدخول عند Google
-//   ↓
-// Callback
-//   ↓
-// السيرفر يعرف مين المستخدم
-//   ↓
-// MongoDB
