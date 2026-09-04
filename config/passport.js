@@ -2,11 +2,9 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
 
 module.exports = (passport) => {
-
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        // هنا بيقرا BACKEND_URL من الـ .env بتاعك (http://localhost:5554)
         callbackURL: `${process.env.BACKEND_URL}/api/auth/google/callback`
     }, async (accessToken, refreshToken, profile, done) => {
         try {
@@ -20,14 +18,14 @@ module.exports = (passport) => {
                     photo: profile.photos[0].value
                 });
                 await user.save();
-                console.log('✅ مستخدم جديد:', user.email);
+                console.log('✅ New user:', user.email);
             } else {
-                console.log('👤 مستخدم موجود:', user.email);
+                console.log('👤 Existing user:', user.email);
             }
 
             return done(null, user);
         } catch (error) {
-            console.error('❌ خطأ:', error);
+            console.error('❌ Google strategy error:', error);
             return done(error, null);
         }
     }));
@@ -41,6 +39,7 @@ module.exports = (passport) => {
             const user = await User.findById(id);
             done(null, user);
         } catch (error) {
+            console.error('❌ Deserialize error:', error);
             done(error, null);
         }
     });

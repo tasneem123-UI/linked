@@ -1,28 +1,37 @@
 const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 
-
-
-// ✅ مسار العودة من جوجل (ده اللي محتاجاه)
+// ✅ مسار العودة من جوجل
 exports.googleCallback = (req, res) => {
-    // تخزين المستخدم في الجلسة
-    req.session.user = req.user;
-    
-    // التوجيه للفرونت مع البيانات
-    res.redirect(`${process.env.FRONTEND_URL}/?user=${encodeURIComponent(JSON.stringify(req.user))}`);
+    try {
+        if (!req.user) {
+            console.error('❌ No user from Google');
+            return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed`);
+        }
+        
+        req.session.user = req.user;
+        console.log('✅ Google login successful:', req.user.email);
+        res.redirect(process.env.FRONTEND_URL);
+    } catch (error) {
+        console.error('❌ Google callback error:', error);
+        res.redirect(`${process.env.FRONTEND_URL}/login?error=server_error`);
+    }
 };
 
 // ✅ جلب المستخدم الحالي
 exports.getCurrentUser = async (req, res) => {
-    if (req.session.user) {
-        try {
-            // جلب بيانات محدثة من قاعدة البيانات
-            const user = await User.findOne({ googleId: req.session.user.googleId });
-            res.json({ success: true, user: user });
-        } catch (error) {
-            res.json({ success: false, user: null });
+    try {
+        if (req.session.user) {
+            const user = await User.findById(req.session.user._id).select('-password');
+            if (!user) {
+                return res.json({ success: false, user: null });
+            }
+            return res.json({ success: true, user });
         }
-    } else {
-        res.json({ success: false, user: null });
+        return res.json({ success: false, user: null });
+    } catch (error) {
+        console.error('❌ Error fetching user:', error);
+        return res.json({ success: false, user: null });
     }
 };
 
@@ -36,53 +45,93 @@ exports.logout = (req, res) => {
     });
 };
 
-//         المستخدم
-//             │
-//             │ يضغط Login
-//             ▼
-//  /api/auth/google
-//             │
-//             ▼
-//           Google
-//             │
-//             │ تسجيل الدخول
-//             ▼
-//  /api/auth/google/callback
-//             │
-//             ▼
-//          Passport
-//             │
-//             ▼
-        //  MongoDB
+// ✅ تسجيل مستخدم جديد
+exports.register = async (req, res) => {
+    try {
+        const { name, email, password } = req.body;
 
+        if (!name || !email || !password) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'جميع الحقول مطلوبة' 
+            });
+        }
 
-//         1. انتِ ضغطتي "تسجيل الدخول بجوجل" في الفرونت
-//    ↓
-// 2. الفرونت راح للباك: http://localhost:5554/api/auth/google
-//    ↓
-// 3. الباك استخدم Passport عشان يوديكِ لجوجل
-//    ↓
-// 4. جوجل سألتك: "تسمحي للتطبيق يشوف بياناتك؟" ووافقتي
-//    ↓
-// 5. جوجل ردّت على الباك بالبيانات دي:
-//    {
-//      id: "106588741961348514497",    // ID المستخدم في جوجل
-//      name: "tasneema khalid",
-//      email: "tasneemakhalid@gmail.com",
-//      photo: "https://...",
-//      token: "ya29.a0AdMD6Ei..."      // Access Token من جوجل
-//    }
-//    ↓
-// 6. الباك استلم البيانات من جوجل عن طريق Passport
-//    ↓
-// 7. الباك خزن البيانات في Session (الجلسة)
-//    req.session.user = user;
-//    ↓
-// 8. الباك ردّ على الفرونت بالبيانات عن طريق Redirect:
-//    res.redirect(`http://localhost:3000/?user=${encodeURIComponent(JSON.stringify(user))}`);
-//    ↓
-// 9. الفرونت استقبل البيانات من الـ URL:
-//    const userData = searchParams.get('user')
-//    ↓
-// 10. الفرونت خزن البيانات في localStorage:
-//     localStorage.setItem('user', JSON.stringify(parsedUser))
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'الإيميل مستخدم بالفعل' 
+            });
+        }
+
+        const user = new User({ name, email, password });
+        await user.save();
+
+        req.session.user = user;
+
+        res.json({
+            success: true,
+            user: { 
+                id: user._id, 
+                name: user.name, 
+                email: user.email, 
+                photo: user.photo 
+            }
+        });
+    } catch (error) {
+        console.error('❌ Register error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+};
+
+// ✅ تسجيل الدخول
+exports.login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'الإيميل والرقم السري مطلوبين' 
+            });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'الإيميل أو الرقم السري غير صحيح' 
+            });
+        }
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({ 
+                success: false, 
+                message: 'الإيميل أو الرقم السري غير صحيح' 
+            });
+        }
+
+        req.session.user = user;
+
+        res.json({
+            success: true,
+            user: { 
+                id: user._id, 
+                name: user.name, 
+                email: user.email, 
+                photo: user.photo 
+            }
+        });
+    } catch (error) {
+        console.error('❌ Login error:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+};

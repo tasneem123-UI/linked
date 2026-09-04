@@ -25,10 +25,12 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 }));
+
 app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// ✅ Session (باستخدام الذاكرة المؤقتة - Memory Store)
+// ✅ Session
 app.use(session({
     name: 'linkedin_session',
     secret: process.env.SESSION_SECRET || 'your_secret_key',
@@ -64,7 +66,7 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.get('/test', (req, res) => {
     res.send('✅ Server is running!');
 });
-// ✅ Route بسيط جداً للاختبار (من غير أي حاجة)
+
 app.get('/ping', (req, res) => {
     res.json({ 
         status: 'ok', 
@@ -72,14 +74,16 @@ app.get('/ping', (req, res) => {
         time: new Date().toISOString()
     });
 });
+
 // ✅ تصدير الـ app عشان Vercel
 module.exports = app;
 
 // ✅ لو مش شغال على Vercel, شغّل السيرفر
 if (process.env.NODE_ENV !== 'production') {
-    const PORT = process.env.PORT || 5554;
+    const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
         console.log(`✅ Server running on http://localhost:${PORT}`);
         console.log(`🔑 Google: http://localhost:${PORT}/api/auth/google`);
+        console.log(`📌 PORT = ${PORT}`);
     });
 }
