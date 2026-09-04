@@ -5,20 +5,27 @@ const session = require('express-session');
 const passport = require('passport');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-const mongoose = require('mongoose');
 const path = require('path');
+const connectDB = require('./config/db');
 
-// ✅ الاتصال بقاعدة البيانات
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('✅ MongoDB connected'))
-    .catch(err => console.error('❌ MongoDB error:', err));
-
+// ✅ إنشاء app أولاً قبل أي شيء
 const app = express();
+
+// ✅ Middleware لضمان الاتصال بـ DB قبل كل طلب
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (err) {
+        console.error('❌ DB Connection failed:', err);
+        res.status(500).json({ success: false, error: 'Database connection failed' });
+    }
+});
 
 // ✅ CORS
 app.use(cors({
     origin: [
-        'http://localhost:3000', 
+        'http://localhost:3000',
         'https://linkedin-front.vercel.app',
         'https://linkedin-front-www.vercel.app'
     ],
@@ -34,7 +41,7 @@ app.use(express.urlencoded({ extended: true }));
 // ✅ Session
 app.use(session({
     name: 'linkedin_session',
-    secret: process.env.SESSION_SECRET || 'your_secret_key',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -69,8 +76,8 @@ app.get('/test', (req, res) => {
 });
 
 app.get('/ping', (req, res) => {
-    res.json({ 
-        status: 'ok', 
+    res.json({
+        status: 'ok',
         message: 'Server is alive!',
         time: new Date().toISOString()
     });
